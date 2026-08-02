@@ -97,7 +97,7 @@ Confirm the password.
 Specify the workgroup.
 
 .EXAMPLE
-PS>Initialize-CreateUser -User "Name" -Password "Password" -Group "Administrators"
+PS> Initialize-CreateUser -User "Name" -Password "Password" -Group "Administrators"
 
 Create the user, enter the password, and assign the user to a specified group.
 
