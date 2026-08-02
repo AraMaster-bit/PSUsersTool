@@ -11,6 +11,9 @@ Specify the user's name.
 .PARAMETER Password
 Enter your password.
 
+.PARAMETER RepeatPassword
+Confirm the password.
+
 .NOTES
 This function is executed first in the workflow by creating the users.
 ]#>
@@ -21,9 +24,16 @@ function Initialize-NewUser{
         [String]$User,
 
         [Parameter(Mandatory = $true)]
-        [SecureString]$Password
+        [SecureString]$Password,
+
+        [Parameter(Mandatory = $true)]
+        [SecureString]$RepeatPassword
     )
     if($PSCmdlet.ShouldProcess("Creating User $User.")){
+        if([PsCredential]::New("A",$Password).GetNetworkCredential().Password -ne [PsCredential]::New("B",$RepeatPassword).GetNetworkCredential().Password){
+            Write-Warning "Passwords don't match."
+            return
+        }
         try{
             New-LocalUser -Name $User -Password $Password -AccountNeverExpires -PasswordNeverExpires -ErrorAction Stop
             Write-Verbose "Successfully created user."
@@ -80,6 +90,9 @@ Specify the user's name.
 .PARAMETER Password
 Enter your password.
 
+.PARAMETER RepeatPassword
+Confirm the password.
+
 .PARAMETER Group
 Specify the workgroup.
 
@@ -102,6 +115,9 @@ function Initialize-CreateUser{
         [SecureString]$Password,
 
         [Parameter(Mandatory = $true)]
+        [SecureString]$RepeatPassword,
+
+        [Parameter(Mandatory = $true)]
         [ValidateScript({$_ -in (Get-LocalGroup).Name})]
         [String]$Group
     )
@@ -109,7 +125,8 @@ function Initialize-CreateUser{
         try{
             Initialize-NewUser `
                 -User $User `
-                -Secure $Password
+                -Password $Password `
+                -RepeatPassword $RepeatPassword
 
             Initialize-AddGroup `
                 -User $User `
