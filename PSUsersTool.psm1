@@ -1,4 +1,105 @@
-<#[
+function Remove-User{
+<#
+.SYNOPSIS
+Remove users.
+
+.DESCRIPTION
+Remove the specified users.
+
+.PARAMETER User
+Specify the user's name.
+
+.EXAMPLE
+Remove-User -User "Name"
+#>
+
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateScript({$_ -in (Get-LocalUser).Name})]
+        [String]$User
+    )
+    if($PSCmdlet.ShouldProcess("The user $User will be removed.")){
+        try{
+            Remove-LocalUser -Name $User -ErrorAction Stop
+            Write-Verbose "Success in removing the user $User."
+        }   catch{
+            $PSCmdlet.ThrowTerminatingError($_)
+        }
+    }
+}
+function Rename-User{
+<#
+.SYNOPSIS
+Rename users.
+
+.DESCRIPTION
+Rename user names.
+
+.PARAMETER User
+Specify the user's name.
+
+.PARAMETER NewName
+Specify the new username.
+
+.EXAMPLE
+Rename-User -User "Name" -NewName "Name"
+#>
+
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateScript({$_ -in (Get-LocalUser).Name})]
+        [String]$User,
+
+        [Parameter(Mandatory = $true)]
+        [String]$NewName
+    )
+    if($PSCmdlet.ShouldProcess("The user's name will be renamed.")){
+        try{
+            Get-LocalUser -Name $User | Rename-LocalUser -NewName $NewName -ErrorAction Stop
+            Write-Verbose "Success in renaming the user."
+        }   catch{
+            $PSCmdlet.ThrowTerminatingError($_)
+        }
+    }
+}
+function Set-PasswordUser{
+<#
+.SYNOPSIS
+Password Change.
+
+.DESCRIPTION
+Change the passwords of system users.
+
+.PARAMETER User
+Specify the user's name.
+
+.PARAMETER Password
+Enter your password.
+
+.EXAMPLE
+Set-PasswordUser -User "Name"
+#>
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateScript({$_ -in (Get-LocalUser).Name})]
+        [String]$User,
+
+        [Parameter(Mandatory = $true)]
+        [SecureString]$Password
+    )
+    if($PSCmdlet.ShouldProcess("The user's password will be changed.")){
+        try{
+            Set-LocalUser -Name $User -Password $Password
+        }   catch{
+            $PSCmdlet.ThrowTerminatingError($_)
+        }
+    }
+}
+function Initialize-NewUser{
+<#
 .SYNOPSIS
 User creation.
 
@@ -16,8 +117,8 @@ Confirm the password.
 
 .NOTES
 This function is executed first in the workflow by creating the users.
-]#>
-function Initialize-NewUser{
+#>
+
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [Parameter(Mandatory = $true)]
@@ -42,7 +143,8 @@ function Initialize-NewUser{
         }
     }
 }
-<#[
+function Initialize-AddGroup{
+<#
 .SYNOPSIS
 Add user to groups.
 
@@ -57,8 +159,8 @@ Specify the workgroup.
 
 .NOTES
 This function is responsible for adding the newly created users to the specified groups.
-]#>
-function Initialize-AddGroup{
+#>
+
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [Parameter(Mandatory = $true)]
@@ -77,7 +179,8 @@ function Initialize-AddGroup{
         }
     }
 }
-<#[
+function New-User{
+<#
 .SYNOPSIS
 Initialize user creation.
 
@@ -97,15 +200,15 @@ Confirm the password.
 Specify the workgroup.
 
 .EXAMPLE
-PS> Initialize-CreateUser -User "Name" -Password "Password" -Group "Administrators"
+PS> New-User -User "Name" -Group "Administrators"
 
-Create the user, enter the password, and assign the user to a specified group.
+Create the user and assign the user to a specified group.
 
 .NOTES
 This function is responsible for handling the workflow to create the user first, and secondly 
 assign the user to the specified group, controlling an order of execution and error handling.
-]#>
-function Initialize-CreateUser{
+#>
+
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
     param(
         [Parameter(Mandatory = $true)]
@@ -121,7 +224,7 @@ function Initialize-CreateUser{
         [ValidateScript({$_ -in (Get-LocalGroup).Name})]
         [String]$Group
     )
-    if($PSCmdlet.ShouldProcess("User $User", "A new user will be created and added to a group.")){
+    if($PSCmdlet.ShouldProcess("A new user will be created and added to a group.")){
         try{
             Initialize-NewUser `
                 -User $User `
@@ -136,4 +239,4 @@ function Initialize-CreateUser{
         }
     }
 }
-Export-ModuleMember -Function Initialize-CreateUser
+Export-ModuleMember -Function Remove-User, Rename-User, Set-PasswordUser, New-User
