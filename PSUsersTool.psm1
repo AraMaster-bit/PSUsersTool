@@ -3,9 +3,6 @@ function Remove-User{
 .SYNOPSIS
 Remove users.
 
-.DESCRIPTION
-Remove the specified users.
-
 .PARAMETER User
 Specify the user's name.
 
@@ -32,9 +29,6 @@ function Rename-User{
 <#
 .SYNOPSIS
 Rename users.
-
-.DESCRIPTION
-Rename user names.
 
 .PARAMETER User
 Specify the user's name.
@@ -68,9 +62,6 @@ function Set-PasswordUser{
 <#
 .SYNOPSIS
 Password Change.
-
-.DESCRIPTION
-Change the passwords of system users.
 
 .PARAMETER User
 Specify the user's name.
