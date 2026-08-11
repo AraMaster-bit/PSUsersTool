@@ -19,7 +19,7 @@ Remove-User -User "Name"
         [ValidateScript({$_ -in (Get-LocalUser).Name})]
         [String]$User
     )
-    if($PSCmdlet.ShouldProcess("The user $User will be removed.")){
+    if($PSCmdlet.ShouldProcess("Users", "The user $User will be removed.")){
         try{
             Remove-LocalUser -Name $User -ErrorAction Stop
             Write-Verbose "Success in removing the user $User."
@@ -55,7 +55,7 @@ Rename-User -User "Name" -NewName "Name"
         [Parameter(Mandatory = $true)]
         [String]$NewName
     )
-    if($PSCmdlet.ShouldProcess("The user's name will be renamed.")){
+    if($PSCmdlet.ShouldProcess("Users", "The user's name will be renamed.")){
         try{
             Get-LocalUser -Name $User | Rename-LocalUser -NewName $NewName -ErrorAction Stop
             Write-Verbose "Success in renaming the user."
@@ -90,7 +90,7 @@ Set-PasswordUser -User "Name"
         [Parameter(Mandatory = $true)]
         [SecureString]$Password
     )
-    if($PSCmdlet.ShouldProcess("The user's password will be changed.")){
+    if($PSCmdlet.ShouldProcess("Users", "The user's password will be changed.")){
         try{
             Set-LocalUser -Name $User -Password $Password
         }   catch{
@@ -130,7 +130,7 @@ This function is executed first in the workflow by creating the users.
         [Parameter(Mandatory = $true)]
         [SecureString]$RepeatPassword
     )
-    if($PSCmdlet.ShouldProcess("Creating User $User.")){
+    if($PSCmdlet.ShouldProcess("Users", "Creating User $User.")){
         if([PsCredential]::New("A",$Password).GetNetworkCredential().Password -ne [PsCredential]::New("B",$RepeatPassword).GetNetworkCredential().Password){
             Write-Warning "Passwords don't match."
             return
@@ -170,7 +170,7 @@ This function is responsible for adding the newly created users to the specified
         [ValidateScript({$_ -in (Get-LocalGroup).Name})]
         [String]$Group
     )
-    if($PSCmdlet.ShouldProcess("Adding User $User to Group $Group.")){
+    if($PSCmdlet.ShouldProcess("Groups", "Adding User $User to Group $Group.")){
         try{
             Add-LocalGroupMember -Member $User -Group $Group -ErrorAction Stop
             Write-Verbose "User added to the group."
@@ -224,7 +224,7 @@ assign the user to the specified group, controlling an order of execution and er
         [ValidateScript({$_ -in (Get-LocalGroup).Name})]
         [String]$Group
     )
-    if($PSCmdlet.ShouldProcess("A new user will be created and added to a group.")){
+    if($PSCmdlet.ShouldProcess("Users", "A new user will be created and added to a group.")){
         try{
             Initialize-NewUser `
                 -User $User `
