@@ -8,7 +8,7 @@
     Description             = @(
         'Remove-User',
         'Rename-User',
-        'Set-PasswordUser',
+        'Set-UserPassword',
         'New-User'
     )
     RequiredModules         = @()

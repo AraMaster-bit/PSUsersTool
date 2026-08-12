@@ -1,22 +1,30 @@
 function Remove-User{
 <#
 .SYNOPSIS
-Remove users.
+Removes a local user account.
 
 .PARAMETER User
-Specify the user's name.
+Specifies the name of the local user account to remove.
 
 .EXAMPLE
-Remove-User -User "Name"
+PS> Remove-User -User "John"
+
+Removes the local user account named John.
 #>
 
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateScript({$_ -in (Get-LocalUser).Name})]
+        [ValidateScript({
+            if($_ -in (Get-LocalUser).Name){
+                $true
+            }   else{
+                throw "The local user '$_' does not exist."
+            }
+        })]
         [String]$User
     )
-    if($PSCmdlet.ShouldProcess("Users", "The user $User will be removed.")){
+    if($PSCmdlet.ShouldProcess("Local Users", "The user $User will be removed.")){
         try{
             Remove-LocalUser -Name $User -ErrorAction Stop
             Write-Verbose "Success in removing the user $User."
@@ -28,89 +36,162 @@ Remove-User -User "Name"
 function Rename-User{
 <#
 .SYNOPSIS
-Rename users.
+Renames a local user account.
 
 .PARAMETER User
-Specify the user's name.
+Specifies the name of the existing local user account.
 
 .PARAMETER NewName
-Specify the new username.
+Specifies the new name for the local user account.
 
 .EXAMPLE
-Rename-User -User "Name" -NewName "Name"
+PS> Rename-User -User "John" -NewName "JohnSmith"
+
+Renames the user account from John to JohnSmith.
 #>
 
-    [CmdletBinding(SupportsShouldProcess = $true)]
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateScript({$_ -in (Get-LocalUser).Name})]
+        [ValidateScript({
+            if($_ -in (Get-LocalUser).Name){
+                $true
+            }   else{
+                throw "The local user '$_' does not exist."
+            }
+        })]
         [String]$User,
 
         [Parameter(Mandatory = $true)]
+        [ValidateScript({
+            if($_ -in (-not(Get-LocalUser).Name)){
+                $true
+            }   else{
+                throw "The local user '$_' already exist."
+            }
+        })]
         [String]$NewName
     )
-    if($PSCmdlet.ShouldProcess("Users", "The user's name will be renamed.")){
-        try{
-            Get-LocalUser -Name $User | Rename-LocalUser -NewName $NewName -ErrorAction Stop
-            Write-Verbose "Success in renaming the user."
-        }   catch{
-            $PSCmdlet.ThrowTerminatingError($_)
-        }
+    try{
+        Get-LocalUser -Name $User | Rename-LocalUser -NewName $NewName -ErrorAction Stop
+        Write-Verbose "Success in renaming the user."
+    }   catch{
+        $PSCmdlet.ThrowTerminatingError($_)
     }
 }
-function Set-PasswordUser{
+function Set-UserPassword{
 <#
 .SYNOPSIS
-Password Change.
+Changes the password of a local user account.
 
 .PARAMETER User
-Specify the user's name.
+Specifies the name of the local user account.
 
 .PARAMETER Password
-Enter your password.
+Specifies the new password as a SecureString.
+
+.PARAMETER RepeatPassword
+Confirms the new password.
 
 .EXAMPLE
-Set-PasswordUser -User "Name"
+PS> Set-PasswordUser -User "John" -Password $Password -RepeatPassword $RepeatPassword
+
+Changes the password of the local user account named John.
+
+.NOTES
+The password must match RepeatPassword.
 #>
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateScript({$_ -in (Get-LocalUser).Name})]
+        [ValidateScript({
+            if($_ -in (Get-LocalUser).Name){
+                $true
+            }   else{
+                throw "The local user '$_' does not exist."
+            }
+        })]
         [String]$User,
 
         [Parameter(Mandatory = $true)]
-        [SecureString]$Password
+        [SecureString]$Password,
+
+        [Parameter(Mandatory = $true)]
+        [SecureString]$RepeatPassword
     )
-    if($PSCmdlet.ShouldProcess("Users", "The user's password will be changed.")){
-        try{
-            Set-LocalUser -Name $User -Password $Password
-        }   catch{
-            $PSCmdlet.ThrowTerminatingError($_)
-        }
+    try{
+        Test-PasswordMatch
+    }   catch{
+        $PSCmdlet.ThrowTerminatingError($_)
+    }
+    if (-not (Test-PasswordMatch -Password $Password -RepeatPassword $RepeatPassword)) {
+        Write-Warning "Passwords don't match."
+        return
+    }
+    try{
+        Set-LocalUser -Name $User -Password $Password -ErrorAction Stop
+    }   catch{
+        $PSCmdlet.ThrowTerminatingError($_)
     }
 }
-function Initialize-NewUser{
+function Test-PasswordMatch{
 <#
 .SYNOPSIS
-User creation.
+Compares two passwords.
 
 .DESCRIPTION
-Creates users and assigns them to a group.
-
-.PARAMETER User
-Specify the user's name.
+Determines whether two SecureString passwords contain the same value.
 
 .PARAMETER Password
-Enter your password.
+Specifies the first password temporal to compare.
 
 .PARAMETER RepeatPassword
-Confirm the password.
+Specifies the second password to compare.
+
+.EXAMPLE
+PS> Test-PasswordMatch -Password $Password -RepeatPassword $RepeatPassword Returns True if both passwords match; otherwise, returns False.
 
 .NOTES
-This function is executed first in the workflow by creating the users.
+This function is intended for internal use by the module to validate password confirmation before creating or changing a local user password.
+The passwords are provided as SecureString values. 
 #>
 
-    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [Parameter(Mandatory)]
+        [SecureString]$Password,
+
+        [Parameter(Mandatory)]
+        [SecureString]$RepeatPassword
+    )
+
+    $PasswordText = [System.Net.NetworkCredential]::new('', $Password).Password
+    $RepeatPasswordText = [System.Net.NetworkCredential]::new('', $RepeatPassword).Password
+
+    return $PasswordText -ceq $RepeatPasswordText
+}
+function New-LocalUserAccount{
+<#
+.SYNOPSIS
+Creates a local user account.
+
+.DESCRIPTION
+Creates a local user account as part of the New-User workflow.
+
+.PARAMETER User
+Specifies the name of the user to create.
+
+.PARAMETER Password
+Specifies the user's password temporal as a SecureString.
+
+.PARAMETER RepeatPassword
+Confirms the user's password.
+
+.NOTES
+This function is intended to be called by New-User.
+#>
+
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [String]$User,
@@ -121,88 +202,89 @@ This function is executed first in the workflow by creating the users.
         [Parameter(Mandatory = $true)]
         [SecureString]$RepeatPassword
     )
-    if($PSCmdlet.ShouldProcess("Users", "Creating User $User.")){
-        if([PsCredential]::New("A",$Password).GetNetworkCredential().Password -ne [PsCredential]::New("B",$RepeatPassword).GetNetworkCredential().Password){
-            Write-Warning "Passwords don't match."
-            return
-        }
-        try{
-            New-LocalUser -Name $User -Password $Password -AccountNeverExpires -PasswordNeverExpires -ErrorAction Stop
-            Write-Verbose "Successfully created user."
-        }   catch{
-            $PSCmdlet.ThrowTerminatingError($_)
-        }
+    if (-not (Test-PasswordMatch -Password $Password -RepeatPassword $RepeatPassword)) {
+        Write-Warning "Passwords don't match."
+        return
+    }
+    try{
+        New-LocalUser -Name $User -Password $Password -ErrorAction Stop
+        net user $User /logonpasswordchg:yes
+        Write-Verbose "Successfully created user."
+    }   catch{
+        $PSCmdlet.ThrowTerminatingError($_)
     }
 }
-function Initialize-AddGroup{
+function Add-LocalUserToGroup{
 <#
 .SYNOPSIS
-Add user to groups.
-
-.DESCRIPTION
-After creating the user is assigned to a specific group.
+Adds a local user to a local group.
 
 .PARAMETER User
-Specify the user's name.
+Specifies the name of the local user account.
 
 .PARAMETER Group
-Specify the workgroup.
+Specifies the name of the local group.
 
 .NOTES
-This function is responsible for adding the newly created users to the specified groups.
+This function is intended to be called by New-User.
 #>
 
-    [CmdletBinding(SupportsShouldProcess = $true)]
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [String]$User,
 
         [Parameter(Mandatory = $true)]
-        [ValidateScript({$_ -in (Get-LocalGroup).Name})]
         [String]$Group
     )
-    if($PSCmdlet.ShouldProcess("Groups", "Adding User $User to Group $Group.")){
-        try{
-            Add-LocalGroupMember -Member $User -Group $Group -ErrorAction Stop
-            Write-Verbose "User added to the group."
-        }   catch{
-            $PSCmdlet.ThrowTerminatingError($_)
-        }
+    try{
+        Add-LocalGroupMember -Member $User -Group $Group -ErrorAction Stop
+        Write-Verbose "User added to the group."
+    }   catch{
+        $PSCmdlet.ThrowTerminatingError($_)
     }
 }
 function New-User{
 <#
 .SYNOPSIS
-Initialize user creation.
+Creates a local user account and adds it to a local group.
 
 .DESCRIPTION
-Start the workflow, creating the new user and adding them to a group.
+Creates a new local user account and adds it to the specified local group.
 
 .PARAMETER User
-Specify the user's name.
+Specifies the name of the user to create.
 
 .PARAMETER Password
-Enter your password.
+Specifies the user's password temporal as a SecureString.
 
 .PARAMETER RepeatPassword
-Confirm the password.
+Confirms the user's password.
 
 .PARAMETER Group
-Specify the workgroup.
+Specifies the name of the local group.
 
 .EXAMPLE
-PS> New-User -User "Name" -Group "Administrators"
+PS> New-User -User "John" -Password $Password -RepeatPassword $RepeatPassword -Group "Users"
 
-Create the user and assign the user to a specified group.
+Creates the user John and adds the user to the Users group.
 
 .NOTES
-This function is responsible for handling the workflow to create the user first, and secondly 
-assign the user to the specified group, controlling an order of execution and error handling.
+The password and confirmation password must match.
+
+The user is created before being added to the specified group.
 #>
 
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateScript({
+            if($_ -in (-not(Get-LocalUser).Name)){
+                $true
+            }   else{
+                throw "The local user '$_' already exists."
+            }
+        })]
         [String]$User,
 
         [Parameter(Mandatory = $true)]
@@ -212,22 +294,30 @@ assign the user to the specified group, controlling an order of execution and er
         [SecureString]$RepeatPassword,
 
         [Parameter(Mandatory = $true)]
-        [ValidateScript({$_ -in (Get-LocalGroup).Name})]
+        [ValidateScript({
+            if($_ -in (Get-LocalGroup).Name){
+                $true
+            }   else{
+                throw "The local group '$_' does not exist."
+            }
+        })]
         [String]$Group
     )
-    if($PSCmdlet.ShouldProcess("Users", "A new user will be created and added to a group.")){
-        try{
-            Initialize-NewUser `
-                -User $User `
-                -Password $Password `
-                -RepeatPassword $RepeatPassword
+    try{
+        Test-PasswordMatch `
+            -Password $Password
+            -RepeatPassword $RepeatPassword
 
-            Initialize-AddGroup `
-                -User $User `
-                -Group $Group
-        }   catch{
-            $PSCmdlet.ThrowTerminatingError($_)
-        }
+        New-LocalUserAccount `
+            -User $User `
+            -Password $Password `
+            -RepeatPassword $RepeatPassword
+
+        Add-LocalUserToGroup `
+            -User $User `
+            -Group $Group
+    }   catch{
+        $PSCmdlet.ThrowTerminatingError($_)
     }
 }
-Export-ModuleMember -Function Remove-User, Rename-User, Set-PasswordUser, New-User
+Export-ModuleMember -Function Remove-User, Rename-User, Set-UserPassword, New-User
