@@ -10,6 +10,9 @@ The module performs a workflow:
 - The parameters validate the existing workgroups in the system.
 - Create the new user.
 - Add the new user to a group.
+- Remove User´s
+- Rename User´s
+- Change the password
 
 ## Features
 
