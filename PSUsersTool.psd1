@@ -6,10 +6,10 @@
     PowerShellVersion       = '5.1'
     CompatiblePSEditions    = @('Desktop', 'Core')
     Description             = @(
+        'New-User',  
         'Remove-User',
         'Rename-User',
-        'Set-UserPassword',
-        'New-User'
+        'Set-UserPassword'
     )
     RequiredModules         = @()
 }
